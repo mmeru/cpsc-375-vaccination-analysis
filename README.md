@@ -4,4 +4,4 @@ This R program intakes and tidies vaccine, hospital bed, and demographic data fr
 
 The program then creates a scatterplot of only the most recent vaccination rate for every country and the number of days since first vaccination.
 
-A bar plot is also included that compares the R2 values of 5 linear models based on the data.
+A bar plot is also included that compares the R-squared values of 5 linear models based on the data.
