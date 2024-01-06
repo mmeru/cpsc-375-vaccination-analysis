@@ -1,9 +1,6 @@
-# Vacination Analysis
+# COVID-19 Vaccination Data Analysis
+- Cleaned and processed diverse COVID-19 vaccination, healthcare bed, and demographic Excel datasets using R and the tidyverse package.
+- Developed a scatter plot illustrating the relationship between the most recent vaccination rates and days since the first vaccination for each country.
+- Constructed multiple linear regression models to analyze the impact of healthcare bed availability, life expectancy, and urban population on vaccination rates.
+- Achieved notable explanatory power of the regression model, with the highest R-squared value of 0.7478.
 
-Project for CPSC 375 at CSUF
-
-This R program intakes and tidies vaccine, hospital bed, and demographic data from excel spreadsheets and creates a table of vaccination rates per country. 
-
-The program then creates a scatterplot of only the most recent vaccination rate for every country and the number of days since first vaccination.
-
-A bar plot is also included that compares the R-squared values of 5 linear models based on the data.
