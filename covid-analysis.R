@@ -1,0 +1,95 @@
+# Moses Merugu 375 Project 1
+# Set working directory for csv files
+setwd("C:/Users/mmeru/Downloads/vaccination-analysis-project-main")
+# Import necessary libraries
+library(tidyverse)
+library(ggplot2)
+# Import necessary csv files
+vax <- read_csv("https://raw.githubusercontent.com/govex/COVID-19/master/data_tables/vaccine_data/global_data/time_series_covid19_vaccine_doses_admin_global.csv")
+beds <- read_csv("hospitalbed.csv")
+demo <- read_csv("demographics.csv")
+
+# VACCINE DATA
+# Filter out provinces and countries with no population
+vax <- vax %>% filter(is.na(Province_State), !is.na(Population)) %>% view()
+# Tidy number of vaccinations on given date
+vax <- vax %>% pivot_longer(-c(1:12), names_to = "Date", values_to = "Vaccinations", values_drop_na = TRUE) %>% view()
+# Delete irrelevant columns
+vax <- vax[,-c(1,2,3,4,5,6,7,9,10,11)] %>% view()
+# Filter out rows containing dates with 0 vaccinations
+vax <- vax %>% filter(!Vaccinations == 0) %>% view()
+# Calculate vaccination rate and add respective column
+vax <- vax %>% select(Country_Region, Population, Vaccinations) %>% group_by(Country_Region) %>% mutate(Vaccination_Rate = Vaccinations / Population) %>% view()
+# Add column that tracks days since first vaccination
+vax <- vax %>% group_by(Country_Region) %>% mutate(Days_Since_First_Vaccination = 1:n()) %>% view()
+
+# BEDS DATA
+# Most recent year appears first, keep the first bed value per country using summarize()
+# Year column is not needed
+beds <- beds %>% group_by(Country) %>% summarize(Beds=first(`Hospital beds (per 10 000 population)`)) %>% view()
+
+# DEMOGRAPHICS DATA
+# Tidy data
+demo <- demo %>% pivot_wider(-'Series Name', names_from = 'Series Code', values_from = YR2015) %>% view()
+# Add male and female data together
+demo <- demo %>% mutate(SP.POP.0014.IN=SP.POP.0014.MA.IN+SP.POP.0014.FE.IN) %>% mutate(SP.POP.80UP=SP.POP.80UP.FE+SP.POP.80UP.MA) %>% mutate(SP.POP.1564.IN=SP.POP.1564.MA.IN+SP.POP.1564.FE.IN) %>% mutate(SP.DYN.AMRT=SP.DYN.AMRT.MA+SP.DYN.AMRT.FE) %>% mutate(SP.POP.TOTL.IN=SP.POP.TOTL.FE.IN+SP.POP.TOTL.MA.IN) %>% mutate(SP.POP.65UP.IN=SP.POP.65UP.FE.IN+SP.POP.65UP.MA.IN) %>% view()
+# Drop country code and gender specific columns, filter NAs
+demo <- demo[,-c(2,6:17)] %>% filter(!is.na(SP.DYN.LE00.IN), !is.na(SP.URB.TOTL), !is.na(SP.POP.0014.IN), !is.na(SP.POP.80UP), !is.na(SP.POP.1564.IN), !is.na(SP.DYN.AMRT), !is.na(SP.POP.TOTL.IN), !is.na(SP.POP.65UP.IN) ) %>% view()
+
+# UNIFORMING COUNTRY NAMES TO MATCH VACCINE DATA
+beds <- beds %>% mutate(Country = replace(Country, Country == "Iran (Islamic Republic of)", "Iran"))
+beds <- beds %>% mutate(Country = replace(Country, Country == "Republic of Korea", "South Korea"))
+beds <- beds %>% mutate(Country = replace(Country, Country == "United Kingdom of Great Britain and Northern Ireland", "United Kingdom"))
+beds <- beds %>% mutate(Country = replace(Country, Country == "Bolivia (Plurinational State of)", "Bolivia"))
+beds <- beds %>% mutate(Country = replace(Country, Country == "Lao People's Democratic Republic", "Laos"))
+beds <- beds %>% mutate(Country = replace(Country, Country == "Venezuela (Bolivarian Republic of)", "Venezuela"))
+beds <- beds %>% mutate(Country = replace(Country, Country == "Republic of Moldova", "Moldova"))
+beds <- beds %>% mutate(Country = replace(Country, Country == "United States of America", "US"))
+beds <- beds %>% mutate(Country = replace(Country, Country == "Viet Nam", "Vietnam"))
+
+demo <- demo %>% mutate(`Country Name` = replace(`Country Name`, `Country Name` == "Korea, Rep.", "South Korea"))
+demo <- demo %>% mutate(`Country Name` = replace(`Country Name`, `Country Name` == "Iran, Islamic Rep.", "Iran"))
+demo <- demo %>% mutate(`Country Name` = replace(`Country Name`, `Country Name` == "Venezuela, RB", "Venezuela"))
+demo <- demo %>% mutate(`Country Name` = replace(`Country Name`, `Country Name` == "St. Vincent and the Grenadines", "Saint Vincent and the Grenadines"))
+demo <- demo %>% mutate(`Country Name` = replace(`Country Name`, `Country Name` == "St. Lucia", "Saint Lucia"))
+demo <- demo %>% mutate(`Country Name` = replace(`Country Name`, `Country Name` == "Slovak Republic", "Slovakia"))
+demo <- demo %>% mutate(`Country Name` = replace(`Country Name`, `Country Name` == "Czech Republic", "Czechia"))
+demo <- demo %>% mutate(`Country Name` = replace(`Country Name`, `Country Name` == "Bahamas, The", "Bahamas"))
+demo <- demo %>% mutate(`Country Name` = replace(`Country Name`, `Country Name` == "United States", "US"))
+
+# Perform inner joins to merge tables
+join <- beds %>% inner_join(vax, by=c(Country="Country_Region")) %>% inner_join(demo, by=c(Country="Country Name")) %>% view()
+
+# Rearrange column order to match example
+final <- join[,c(1,5,4,3,6,2,7,8)]
+
+view(final)
+
+# PLOTS AND LINEAR MODELS
+# Scatterplot of only the most recent vaccination rate for every country and the number of days since first vaccination
+forplot <- final %>% relocate(Vaccinations, .after = Country) %>% relocate(Vaccination_Rate, .after = Country)
+scatter <- ggplot(data=forplot) + geom_point(mapping=aes(x=Days_Since_First_Vaccination, y=Vaccination_Rate))
+scatter
+
+m1 <- lm(data = final, Vaccination_Rate ~ Days_Since_First_Vaccination)
+summary(m1) # R-squared: 0.6125
+
+m2 <- lm(data = final, Vaccination_Rate ~ Days_Since_First_Vaccination + Beds)
+summary(m2) # R-squared: 0.6341
+
+m3 <- lm(data = final, Vaccination_Rate ~ Days_Since_First_Vaccination + SP.DYN.LE00.IN)
+summary(m3) # R-squared: 0.7473
+
+m4 <- lm(data = final, Vaccination_Rate ~ Days_Since_First_Vaccination + SP.URB.TOTL)
+summary(m4) # R-squared: 0.6131
+
+m5 <- lm(data = final, Vaccination_Rate ~ Days_Since_First_Vaccination + SP.URB.TOTL + SP.DYN.LE00.IN)
+summary(m5) # R-squared: 0.7478
+
+# Organize 5 models and corresponding R2 values into data frame
+df <- data.frame(Model=c("M1", "M2", "M3", "M4", "M5"),
+R2=c(summary(m1)$r.squared, summary(m2)$adj.r.squared, summary(m3)$adj.r.squared, summary(m4)$adj.r.squared, summary(m5)$adj.r.squared))
+
+# Create bar plot comparing models and their R2 values
+bar <-ggplot(data=df, aes(x=Model, y=R2)) + geom_bar(stat="identity")
+bar
